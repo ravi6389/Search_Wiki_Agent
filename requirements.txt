@@ -1,9 +1,9 @@
 langchain
 langchain-community
+langchain_groq
 bs4
 arxiv
 wikipedia
-langchain-openai
 duckdb
 pandas
 openai
