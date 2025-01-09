@@ -1,0 +1,10 @@
+langchain
+langchain-community
+bs4
+arxiv
+wikipedia
+langchain-openai
+duckdb
+pandas
+openai
+duckduckgo-search
