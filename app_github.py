@@ -58,6 +58,7 @@ def ddg_search_tool(query: str, num_results: int = 5) -> dict:
     if not results:
         return {"error": "No results found."}
 
+    # st.write(results)
     return(results)
 
 
@@ -69,6 +70,71 @@ search_tool = Tool(
     description="A search tool using DuckDuckGo to find information."
 )
 
+@tool("code_writing_tool", return_direct=True)
+def code_writing_tool(query: str, num_results: int = 5) -> str:
+    """
+    Only used when user asks expilcitly to write a code for something else doesnt get used
+
+    Args:
+        query (str): The input query by user for writing code.
+        
+    Returns:
+        str: Code written in the language user asks
+        
+    """
+
+    def analyze_query_with_ai(query: str) -> bool:
+        """
+        Use AI to determine if crawling is needed based on the query.
+        """
+        prompt = (
+            f"Decide if the following search query requires writing code or not: "
+            f"'{query}'. Respond with 'yes' if it requires to write code in any programming language else reply with 'no."
+        )
+        try:
+            llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
+           
+        
+            messages = [
+                {"role": "system", "content": "You are an intelligent assistant that can decide if user is asking you to write code."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            # Invoke the LLM (replace with your LLM API invocation)
+            response = llm.invoke(messages)
+            decision = response.content
+
+            return decision == "yes"
+        except Exception as e:
+            print(f"AI analysis failed: {e}")
+            return False
+
+    # Use AI to determine if crawling is required
+    write_code = analyze_query_with_ai(query)
+
+    if(write_code == 'yes'):
+            prompt = f"Based on the following {query},  write the code for {query}"
+            template = PromptTemplate(
+                        input_variables=["query"],
+                        template=prompt,
+                    )
+
+                    # Create the LLMChain to manage the model and prompt interaction
+            llm_chain = LLMChain(prompt=template, llm=llm)
+            response = llm_chain.invoke({
+                "content" : query
+            })      
+            
+            
+            return response["text"]
+
+
+
+code_tool = Tool(
+    name="Code Writer",
+    func=code_writing_tool,
+    description="A tool for writing code."
+)
 
 
 st.title("🔎 LangChain - Chat with search")
@@ -78,7 +144,7 @@ st.title("🔎 LangChain - Chat with search")
 # """
 
 """
-In this example, we will see the working of an AI agent. Type in your query and agent will display the thoughts and actions of an agent in an interactive Streamlit app.
+In this example, we will see the working of an AI agent. Tyoe in your query and agent will display the thoughts and actions of an agent in an interactive Streamlit app.
 """
 
 
@@ -97,7 +163,7 @@ if prompt:=st.chat_input(placeholder="What is machine learning?"):
     # search=DDGS(verify = False).text(prompt, max_results=10) 
     # llm=ChatGroq(groq_api_key=GROQ_API_KEY,model_name="Llama3-8b-8192",streaming=True)
     llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
-    tools=[search_tool, arxiv, wiki]
+    tools=[search_tool, arxiv, wiki, code_tool]
 
     search_agent=initialize_agent(tools,llm,
                                   agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
