@@ -144,7 +144,7 @@ st.title("🔎 LangChain - Chat with search")
 # """
 
 """
-In this example, we will see the working of an AI agent. Tyoe in your query and agent will display the thoughts and actions of an agent in an interactive Streamlit app.
+In this example, we will see the working of an AI agent. Type in your query and agent will display the thoughts and actions of an agent in an interactive Streamlit app.
 """
 
 
