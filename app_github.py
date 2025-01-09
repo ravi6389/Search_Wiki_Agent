@@ -1,29 +1,31 @@
 import streamlit as st
-
+from langchain_groq import ChatGroq
 from langchain_community.utilities import ArxivAPIWrapper,WikipediaAPIWrapper
 from langchain_community.tools import ArxivQueryRun,WikipediaQueryRun,DuckDuckGoSearchRun
 from langchain.agents import initialize_agent,AgentType
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.tools import tool
-import os
 
+from dotenv import load_dotenv
 from duckduckgo_search import DDGS
 from langchain.agents import Tool
 from langchain.prompts import PromptTemplate
 from duckduckgo_search import DDGS
 import requests
 from bs4 import BeautifulSoup
-from langchain_openai import ChatOpenAI
+
 from duckduckgo_search import DDGS
 import requests
 from bs4 import BeautifulSoup
-import openai
+
 
 from langchain.chains import LLMChain
 
 
-os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
-llm = ChatOpenAI(base_url = 'https://models.inference.ai.azure.com', model='gpt-4o',  streaming = True)
+GROQ_API_KEY = st.secrets['GROQ_API_KEY']
+
+
+llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
 
 ## Arxiv and wikipedia Tools
 arxiv_wrapper=ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=200)
@@ -36,12 +38,11 @@ DuckDuckGoSearchRun.requests_kwargs = {'verify': False}
 
 
 # Set your OpenAI API key
-openai.api_key = "your_openai_api_key"
 
 @tool("ddg_search", return_direct=False)
 def ddg_search_tool(query: str, num_results: int = 5) -> dict:
     """
-    Perform a DuckDuckGo search and use AI to decide if page crawling is required.
+    Perform a DuckDuckGo search and give results that user asks.
 
     Args:
         query (str): The search query.
@@ -50,119 +51,17 @@ def ddg_search_tool(query: str, num_results: int = 5) -> dict:
     Returns:
         dict: Search results with optional crawled page content.
     """
-    def analyze_query_with_ai(query: str) -> bool:
-        """
-        Use AI to determine if crawling is needed based on the query.
-        """
-        prompt = (
-            f"Decide if the following search query requires fetching detailed page content: "
-            f"'{query}'. Respond with 'yes' if it requires more detailed content, or 'no' otherwise."
-        )
-        try:
-            llm = ChatOpenAI(base_url = 'https://models.inference.ai.azure.com', model='gpt-4o', streaming = True)
-           
-        
-            messages = [
-                {"role": "system", "content": "You are an intelligent assistant that can decide if crawling web page is required or not."},
-                {"role": "user", "content": prompt}
-            ]
-            
-            # Invoke the LLM (replace with your LLM API invocation)
-            response = llm.invoke(messages)
-            decision = response.content
-
-            return decision == "yes"
-        except Exception as e:
-            print(f"AI analysis failed: {e}")
-            return False
-
-    # Use AI to determine if crawling is required
-    crawl_pages = analyze_query_with_ai(query)
+   
 
     # Perform DuckDuckGo search
     results = DDGS(verify=False).text(query, max_results=5)
     if not results:
         return {"error": "No results found."}
 
-    search_results = []
-    for result in results:
-        entry = {"title": result["title"], "url": result["href"]}
-        
-        # Automatically crawl pages if AI decides it is necessary
-        if crawl_pages:
-            try:
-                response = requests.get(result["href"], timeout=10)
-                response.raise_for_status()  # Ensure the request was successful
-                soup = BeautifulSoup(response.text, "html.parser")
-                # Extract visible text content from the page
-                content = soup.get_text(separator="\n").strip()
-                entry["content"] = content[:1000]  # Limit to the first 1000 characters
-            except Exception as e:
-                entry["content"] = f"Error fetching page content: {e}"
-
-        search_results.append(entry)
-
-    return {"results": search_results, "crawling": crawl_pages}
+    return(results)
 
 
-@tool("code_writing_tool", return_direct=True)
-def code_writing_tool(query: str, num_results: int = 5) -> str:
-    """
-    Only used when user asks expilcitly to write a code for something else doesnt get used
-
-    Args:
-        query (str): The input query by user for writing code.
-        
-    Returns:
-        str: Code written in the language user asks
-        
-    """
-
-    def analyze_query_with_ai(query: str) -> bool:
-        """
-        Use AI to determine if crawling is needed based on the query.
-        """
-        prompt = (
-            f"Decide if the following search query requires writing code or not: "
-            f"'{query}'. Respond with 'yes' if it requires to write code in any programming language else reply with 'no."
-        )
-        try:
-            llm = ChatOpenAI(base_url = 'https://models.inference.ai.azure.com', model='gpt-4o', streaming = True)
-           
-        
-            messages = [
-                {"role": "system", "content": "You are an intelligent assistant that can decide if user is asking you to write code."},
-                {"role": "user", "content": prompt}
-            ]
-            
-            # Invoke the LLM (replace with your LLM API invocation)
-            response = llm.invoke(messages)
-            decision = response.content
-
-            return decision == "yes"
-        except Exception as e:
-            print(f"AI analysis failed: {e}")
-            return False
-
-    # Use AI to determine if crawling is required
-    write_code = analyze_query_with_ai(query)
-
-    if(write_code == 'yes'):
-            prompt = f"Based on the following {query},  write the code for {query}"
-            template = PromptTemplate(
-                        input_variables=["query"],
-                        template=prompt,
-                    )
-
-                    # Create the LLMChain to manage the model and prompt interaction
-            llm_chain = LLMChain(prompt=template, llm=llm)
-            response = llm_chain.invoke({
-                "content" : query
-            })      
-            
-            # st.write(response)
-            return response["text"]
-
+    
 
 search_tool = Tool(
     name="DuckDuckGo Search",
@@ -170,11 +69,6 @@ search_tool = Tool(
     description="A search tool using DuckDuckGo to find information."
 )
 
-code_tool = Tool(
-    name="Code Writer",
-    func=code_writing_tool,
-    description="A tool for writing code."
-)
 
 
 st.title("🔎 LangChain - Chat with search")
@@ -202,7 +96,7 @@ if prompt:=st.chat_input(placeholder="What is machine learning?"):
     st.chat_message("user").write(prompt)
     # search=DDGS(verify = False).text(prompt, max_results=10) 
     # llm=ChatGroq(groq_api_key=GROQ_API_KEY,model_name="Llama3-8b-8192",streaming=True)
-    llm = ChatOpenAI(base_url = 'https://models.inference.ai.azure.com', model='gpt-4o', streaming = True)
+    llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
     tools=[search_tool, arxiv, wiki]
 
     search_agent=initialize_agent(tools,llm,
