@@ -53,9 +53,9 @@ def ddg_search_tool(query: str, num_results: int = 5) -> dict:
    
 
     # Perform DuckDuckGo search
-    # results = DDGS(verify=False).text(query, max_results=5)
-    with DDGS() as ddgs:
-        results = list(ddgs.text(query, max_results=5))
+    results = DDGS(verify=False).text(query, max_results=5)
+    # with DDGS() as ddgs:
+    #     results = list(ddgs.text(query, max_results=5))
     if not results:
         return {"error": "No results found."}
 
