@@ -158,21 +158,47 @@ if "messages" not in st.session_state:
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg['content'])
 
-if prompt:=st.chat_input(placeholder="What is machine learning?"):
-    st.session_state.messages.append({"role":"user","content":prompt})
-    st.chat_message("user").write(prompt)
-    # search=DDGS(verify = False).text(prompt, max_results=10) 
-    # llm=ChatGroq(groq_api_key=GROQ_API_KEY,model_name="Llama3-8b-8192",streaming=True)
-    llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
-    tools=[search_tool, arxiv, wiki, code_tool]
+# if prompt:=st.chat_input(placeholder="What is machine learning?"):
+#     st.session_state.messages.append({"role":"user","content":prompt})
+#     st.chat_message("user").write(prompt)
+#     # search=DDGS(verify = False).text(prompt, max_results=10) 
+#     # llm=ChatGroq(groq_api_key=GROQ_API_KEY,model_name="Llama3-8b-8192",streaming=True)
+#     llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
+#     tools=[search_tool, arxiv, wiki, code_tool]
 
-    search_agent=initialize_agent(tools,llm,
-                                  agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-                                  handling_parsing_errors=True, verbose = True)
+#     search_agent=initialize_agent(tools,llm,
+#                                   agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+#                                   handling_parsing_errors=True, verbose = True)
 
-    with st.chat_message("assistant"):
-        st_cb=StreamlitCallbackHandler(st.container(),expand_new_thoughts=False)
-        response=search_agent.run(st.session_state.messages,callbacks=[st_cb])
-        st.session_state.messages.append({'role':'assistant',"content":response})
-        st.write(response)
+#     with st.chat_message("assistant"):
+#         st_cb=StreamlitCallbackHandler(st.container(),expand_new_thoughts=False)
+#         response=search_agent.run(st.session_state.messages,callbacks=[st_cb])
+#         st.session_state.messages.append({'role':'assistant',"content":response})
+#         st.write(response)
 
+if prompt := st.chat_input(placeholder="What is machine learning?"):
+    # Check if the question has already been asked
+    previous_questions = {msg["content"] for msg in st.session_state.messages if msg["role"] == "user"}
+
+    if prompt in previous_questions:
+        st.chat_message("assistant").write("You've already asked this question. Please ask something new.")
+    else:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+
+        llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming=True)
+        tools = [search_tool, arxiv, wiki, code_tool]
+
+        search_agent = initialize_agent(
+            tools,
+            llm,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            handling_parsing_errors=True,
+            verbose=True
+        )
+
+        with st.chat_message("assistant"):
+            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+            response = search_agent.run(st.session_state.messages, callbacks=[st_cb])
+            st.session_state.messages.append({'role': 'assistant', "content": response})
+            st.write(response)
