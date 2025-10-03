@@ -24,7 +24,7 @@ from langchain.chains import LLMChain
 GROQ_API_KEY = st.secrets['GROQ_API_KEY']
 
 
-llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-8b-8192",\
+llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama-3.1-8b-instant",\
                streaming = True)
 
 ## Arxiv and wikipedia Tools
@@ -203,6 +203,7 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
             response = search_agent.run(st.session_state.messages, callbacks=[st_cb])
             st.session_state.messages.append({'role': 'assistant', "content": response})
             st.write(response)
+
 
 
 
