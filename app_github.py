@@ -94,7 +94,7 @@ def code_writing_tool(query: str, num_results: int = 5) -> str:
             f"'{query}'. Respond with 'yes' if it requires to write code in any programming language else reply with 'no."
         )
         try:
-            llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
+            # llm = ChatGroq(temperature=0.8, groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192", streaming = True)
            
         
             messages = [
@@ -203,4 +203,5 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
             response = search_agent.run(st.session_state.messages, callbacks=[st_cb])
             st.session_state.messages.append({'role': 'assistant', "content": response})
             st.write(response)
+
 
